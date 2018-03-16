@@ -48,7 +48,6 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <DCC_HppOutput>..\source\hpp\$(Platform)\$(Config)</DCC_HppOutput>
         <DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
-        <DllSuffix>250</DllSuffix>
         <DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
         <DCC_Description>Mustangpeak Common Library Delphi DesignTime Package</DCC_Description>
         <VerInfo_Locale>1031</VerInfo_Locale>
