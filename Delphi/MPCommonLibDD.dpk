@@ -26,7 +26,6 @@ package MPCommonLibDD;
 {$DEFINE RELEASE}
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'Mustangpeak Common Library Delphi DesignTime Package'}
-{$LIBSUFFIX '250'}
 {$DESIGNONLY}
 {$IMPLICITBUILD OFF}
 
