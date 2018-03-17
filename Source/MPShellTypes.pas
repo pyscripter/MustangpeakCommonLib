@@ -25,9 +25,6 @@ unit MPShellTypes;
 
 interface
 
-{$I ..\Include\Debug.inc}
-{$I ..\Include\Addins.inc}
-
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   ImgList, ShlObj, ShellAPI, ActiveX, ComObj, CommCtrl;

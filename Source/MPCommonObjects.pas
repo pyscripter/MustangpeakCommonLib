@@ -25,8 +25,6 @@ unit MPCommonObjects;
 
 interface
 
-{$I ..\Include\Addins.inc}
-
 uses
   Types,
   Windows,

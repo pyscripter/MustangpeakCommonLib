@@ -43,9 +43,6 @@ unit MPCommonUtilities;
 
 {$B-}
 
-{$I ..\Include\Debug.inc}
-{$I ..\Include\Addins.inc}
-
 interface
 
 uses

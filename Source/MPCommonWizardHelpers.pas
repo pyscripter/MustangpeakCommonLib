@@ -27,8 +27,6 @@ unit MPCommonWizardHelpers;
 
 interface
 
-{$I ..\Include\Addins.inc}
-
 uses
   SysUtils,
   Windows,

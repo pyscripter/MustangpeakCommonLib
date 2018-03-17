@@ -29,9 +29,6 @@ interface
   {$DEFINE GX_DEBUG}
 {$ENDIF}
 
-{$I ..\Include\Debug.inc}
-{$I ..\Include\Addins.inc}
-
 uses
   Windows,
   Messages,

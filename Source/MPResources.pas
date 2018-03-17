@@ -23,9 +23,6 @@ unit MPResources;
 
 interface
 
-{$I ..\Include\Debug.inc}
-{$I ..\Include\Addins.inc}
-
 {$B-}
 
 {$IFDEF WEAKPACKAGING}
