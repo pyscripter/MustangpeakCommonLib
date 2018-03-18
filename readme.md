@@ -4,7 +4,7 @@ MustangpeakCommonLib
 **A. Introduction**
 
 The Mustangpeak library for Delphi and C++Builder was developed by **Jim Kueneman**
-and contains the EasyListView and the VirutalShellExplorer.
+and contains the EasyListView and the VirutalShellExplorer components.
 MustangpeakCommonLib is a base library needed for all Mustangpeak components.  
 
 This is a source-only release of MustangpeakCommonLib. It includes
