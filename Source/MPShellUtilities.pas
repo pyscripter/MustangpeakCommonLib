@@ -1997,9 +1997,10 @@ var
   Flags: UINT;
   Last_CB: Word;
   LastPIDL: PItemIDList;
-
 begin
   Result := False;
+  if not Assigned(APIDL) then Exit;
+
   Flags := SFGAO_FOLDER;
   if PIDLMgr.IsDesktopFolder(APIDL) then
     Result := True
