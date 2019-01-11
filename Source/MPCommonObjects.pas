@@ -58,9 +58,6 @@ type
 
   TCommonImageIndexInteger = type Integer;
 
-  TStringListEx = class(TStringList)
-  end;
-
 type
   TCommonPIDLManager = class;  // forward
   TCommonPIDLList = class;     // forward
