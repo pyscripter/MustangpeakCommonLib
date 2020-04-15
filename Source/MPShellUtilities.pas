@@ -1986,17 +1986,18 @@ begin
     end else
     begin
       PIDLMgr.StripLastID(APIDL, Last_CB, LastPIDL);
-      try
-        if Succeeded( Desktop.BindToObject(APIDL, nil, IShellFolder, Pointer( Parent))) then
-        begin
-          LastPIDL^.mkid.cb := Last_CB;
-          if Succeeded( Parent.GetAttributesOf(1, LastPIDL, Flags)) then
-            Result := Flags and SFGAO_FOLDER <> 0
+      if Assigned(LastPIDL) then
+        try
+          if Succeeded( Desktop.BindToObject(APIDL, nil, IShellFolder, Pointer( Parent))) then
+          begin
+            LastPIDL^.mkid.cb := Last_CB;
+            if Succeeded( Parent.GetAttributesOf(1, LastPIDL, Flags)) then
+              Result := Flags and SFGAO_FOLDER <> 0
+          end
+        finally
+          if LastPIDL^.mkid.cb = 0 then
+            LastPIDL^.mkid.cb := Last_CB;
         end
-      finally
-        if LastPIDL^.mkid.cb = 0 then
-          LastPIDL^.mkid.cb := Last_CB;
-      end
     end
   end
 end;

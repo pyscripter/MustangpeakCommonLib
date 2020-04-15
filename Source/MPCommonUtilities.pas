@@ -3156,16 +3156,17 @@ begin
       end else
       begin
         PIDLMgr.StripLastID(PIDL, LastCB, LastID);
-        try
-          if Succeeded(Desktop.BindToObject(PIDL, nil, IShellFolder, pointer(Folder))) then
-          begin
+        if Assigned(LastPIDL) then
+          try
+            if Succeeded(Desktop.BindToObject(PIDL, nil, IShellFolder, pointer(Folder))) then
+            begin
+              LastID.mkid.cb := LastCB;
+              if Succeeded(Folder.GetDisplayNameOf(LastID, SHGDN_FORPARSING, StrRet)) then
+                 Result := StrRetToStr(StrRet, LastID);
+            end
+          finally
             LastID.mkid.cb := LastCB;
-            if Succeeded(Folder.GetDisplayNameOf(LastID, SHGDN_FORPARSING, StrRet)) then
-               Result := StrRetToStr(StrRet, LastID);
           end
-        finally
-          LastID.mkid.cb := LastCB;
-        end
       end
     finally
       PIDLMgr.Free
