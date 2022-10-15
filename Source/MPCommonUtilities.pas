@@ -485,7 +485,7 @@ var
 
 procedure FillSeparatorList(Menu: HMenu; Separators: TList);
 var
-  i: Integer;
+  i: NativeInt;
   MenuInfoW: TMenuItemInfoW;
 begin
   Separators.Clear;
@@ -522,15 +522,15 @@ begin
     begin
       if (i = GetMenuItemCount(Menu) - 1) then
       begin
-        if Integer(Separators[i]) <> -1 then
+        if NativeInt(Separators[i]) <> -1 then
           DeleteMenu(Menu, i, MF_BYPOSITION)
       end else
-      if (Integer(Separators[i]) <> -1) and (Integer(Separators[i-1]) <> -1) then
+      if (NativeInt(Separators[i]) <> -1) and (NativeInt(Separators[i-1]) <> -1) then
         DeleteMenu(Menu, i, MF_BYPOSITION)
     end;
     if Separators.Count > 0 then
       begin
-        if Integer(Separators[0]) <> -1 then
+        if NativeInt(Separators[0]) <> -1 then
           DeleteMenu(Menu, 0, MF_BYPOSITION)
       end
   finally
@@ -2049,7 +2049,8 @@ var
   LongColor: DWORD;
   SourceRed, SourceGreen, SourceBlue, BkGndRed, BkGndGreen, BkGndBlue, RedTarget, GreenTarget, BlueTarget, Alpha: Byte;
   Target, Mask: TBitmap;
-  LineDeltaImage32, PixelDeltaImage32, LineDeltaTarget, PixelDeltaTarget, LineDeltaMask, PixelDeltaMask: Integer;
+  LineDeltaImage32, LineDeltaTarget, LineDeltaMask: NativeInt;
+  PixelDeltaImage32, PixelDeltaTarget, PixelDeltaMask: Integer;
   PLineImage32, PLineTarget, PLineMask, PPixelImage32, PPixelTarget, PPixelMask: PByte;
 begin
   // Algorithm only works for bitmaps with a height > 1 pixel, should not be a limitation
@@ -2071,9 +2072,9 @@ begin
       Mask.Canvas.Brush.Color := BackGndColor;
       Mask.Canvas.FillRect(Mask.Canvas.ClipRect);
 
-      LineDeltaImage32 := DWORD( Image32.ScanLine[1]) - DWORD( Image32.ScanLine[0]);
-      LineDeltaTarget := DWORD( Target.ScanLine[1]) - DWORD( Target.ScanLine[0]);
-      LineDeltaMask := DWORD( Mask.ScanLine[1]) - DWORD( Mask.ScanLine[0]);
+      LineDeltaImage32 := NativeUInt(Image32.ScanLine[1]) - NativeUInt(Image32.ScanLine[0]);
+      LineDeltaTarget := NativeUInt(Target.ScanLine[1]) - NativeUInt(Target.ScanLine[0]);
+      LineDeltaMask := NativeUInt(Mask.ScanLine[1]) - NativeUInt(Mask.ScanLine[0]);
 
       PixelDeltaImage32 := SizeOf(TRGBQuad);
       PixelDeltaTarget := SizeOf(TRGBQuad);
@@ -3312,14 +3313,14 @@ end;
 function UsesAlphaChannel(Image32: TBitmap): Boolean;
 var
   I, N: Integer;
-  LineDeltaImage32, PixelDeltaImage32: Integer;
+  LineDeltaImage32, PixelDeltaImage32: NativeInt;
   Alpha: Byte;
   PLineImage32, PPixelImage32: PByte;
 begin
   Result := False;
   if Assigned(Image32) and (Image32.PixelFormat = pf32Bit) and (Image32.Height > 1) then
   begin
-      LineDeltaImage32 := Integer( DWORD( Image32.ScanLine[1]) - DWORD( Image32.ScanLine[0]));
+      LineDeltaImage32 := NativeUInt(Image32.ScanLine[1]) - NativeUInt(Image32.ScanLine[0]);
       PixelDeltaImage32 := SizeOf(TRGBQuad);
       PLineImage32 := Image32.ScanLine[0];
 
@@ -3330,7 +3331,7 @@ begin
         for N := 0 to Image32.Width - 1 do
         begin
           // Source GetColorValues ; Profiled = ~24-30% of time
-          Alpha := (PDWORD( PPixelImage32)^ and $FF000000) shr 24;
+          Alpha := (PDWORD(PPixelImage32)^ and $FF000000) shr 24;
           Result := Alpha <> 0;
           if Result then
             Exit;
@@ -3493,7 +3494,9 @@ end;
 
 function IsWin7: Boolean;
 begin
-  Result := (Win32Platform = VER_PLATFORM_WIN32_NT) and (Win32MajorVersion >= 6) and (Win32MinorVersion > 0)
+  Result := (Win32Platform = VER_PLATFORM_WIN32_NT) and
+    (((Win32MajorVersion = 6) and (Win32MinorVersion > 0)) or
+    (Win32MajorVersion > 6));
 end;
 
 function RectHeight(R: TRect): Integer;

@@ -164,9 +164,6 @@ type
     FCacheDoubleBufferBits: Boolean;
     FCanvas: TControlCanvas;
     FForcePaint: Boolean;
-    FImagesExtraLarge: TImageList;
-    FImagesLarge: TImageList;
-    FImagesSmall: TImageList;
     FMouseEnterExitNotifyEnabled: Boolean;
     FMouseInWindow: Boolean;
     FMouseTimer: TTimer;
@@ -189,6 +186,7 @@ type
     FUpdateCount: Integer;
     procedure AfterPaintRect(ACanvas: TCanvas; ClipRect: TRect); virtual;
     procedure CalcThemedNCSize(var ContextRect: TRect); virtual;
+    procedure ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean); override;
     procedure CMColorChange(var Message: TMessage); message CM_COLORCHANGED;
     procedure CMCtl3DChanged(var Msg: TMessage); message CM_Ctl3DChanged;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
@@ -204,7 +202,6 @@ type
     procedure DoUpdate; virtual;
     procedure KillMouseInWindowTimer;
     procedure MouseTimerProc(Sender: TObject);
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure PaintThemedNCBkgnd(ACanvas: TCanvas; ARect: TRect); virtual;
     procedure ResizeBackBits(NewWidth, NewHeight: Integer);
     procedure ValidateBorder;
@@ -428,8 +425,8 @@ type
   // Encapsulates the System image lists
   //
   TSysImageListSize =  (
-    sisSmall,    // Large System Images
-    sisLarge,    // Small System Images
+    sisSmall,      // Large System Images
+    sisLarge,      // Small System Images
     sisExtraLarge, // Extra Large Images (48x48)
     sisJumbo       // Jumbo Images (256x256)    Becareful with this.  M$ has layed several traps in using this:
                    // http://blog.alastria.com/2009/07/27/the-windows-api-makers-have-lost-their-minds-part-17/
@@ -445,7 +442,6 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-
     property ImageSize: TSysImageListSize read FImageSize write SetImageSize;
   end;
 
@@ -465,6 +461,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     procedure DoDraw(Index: Integer; Canvas: TCanvas; X, Y: Integer;
        Style: Cardinal; Enabled: Boolean = True); override;
     property SourceImageList: TCustomImageList
@@ -580,7 +577,7 @@ begin
     FExtraLargeSysImages := TCommonSysImages.Create(nil);
     FExtraLargeSysImages.ImageSize := sisExtraLarge;
   end;
-  Result := FExtraLargeSysImages
+  Result := FExtraLargeSysImages;
 end;
 
 function LargeSysImages: TCommonSysImages;
@@ -590,7 +587,7 @@ begin
     FLargeSysImages := TCommonSysImages.Create(nil);
     FLargeSysImages.ImageSize := sisLarge;
   end;
-  Result := FLargeSysImages
+  Result := FLargeSysImages;
 end;
 
 function SmallSysImages: TCommonSysImages;
@@ -600,7 +597,7 @@ begin
     FSmallSysImages := TCommonSysImages.Create(nil);
     FSmallSysImages.ImageSize := sisSmall;
   end;
-  Result := FSmallSysImages
+  Result := FSmallSysImages;
 end;
 
 {$if CompilerVersion >= 33}
@@ -691,10 +688,10 @@ begin
       // Test the very list item in the List
       NS := TNamespace( NamespaceList[NamespaceList.Count - 1]);
       if PIDLMgr.IsDesktopFolder(NS.AbsolutePIDL) then
-        Dups.Add( Pointer( NamespaceList.Count - 1));  // Remove the Desktop PIDL in the last position
+        Dups.Add(Pointer(NamespaceList.Count - 1));  // Remove the Desktop PIDL in the last position
     finally
       for i := 0 to Dups.Count - 1 do
-        NamespaceList[ Integer( Dups[i])] := nil;
+        NamespaceList[NativeInt(Dups[i])] := nil;
       NamespaceList.Pack;
       Dups.Free
     end
@@ -900,7 +897,7 @@ begin
   AddBiDiModeExStyle(Params.ExStyle);
 
   // Themed does not work at design time as Delphi is not themed
-  if (BorderStyle = bsSingle) and not Themed then
+  if (BorderStyle = bsSingle) and (not Themed or StyleServices.Enabled) then
   begin
     if Ctl3D then
     begin
@@ -909,7 +906,7 @@ begin
     end
     else
       Params.Style := Params.Style or WS_BORDER;
-  end
+  end;
 end;
 
 procedure TCommonCanvasControl.CreateWnd;
@@ -1011,23 +1008,6 @@ begin
   begin
     FreeAndNil(FMouseTimer);
     DoMouseExit;
-  end
-end;
-
-procedure TCommonCanvasControl.Notification(AComponent: TComponent;
-  Operation: TOperation);
-begin
-  inherited;
-  if Operation = opRemove then
-  begin
-    if AComponent = FImagesExtraLarge then
-      FImagesExtraLarge := nil
-    else
-    if AComponent = FImagesLarge then
-      FImagesLarge := nil
-    else
-    if AComponent = FImagesSmall then
-      FImagesSmall := nil
   end
 end;
 
@@ -1136,6 +1116,10 @@ procedure TCommonCanvasControl.ValidateBorder;
 var
   HasClientEdge, HasBorder: Boolean;
 begin
+  //In this case the StyleServices paints the border
+  if StyleServices.Enabled then
+    Exit;
+
   HasClientEdge := (GetWindowLong(Handle, GWL_EXSTYLE) and WS_EX_CLIENTEDGE) <> 0;
   HasBorder := (GetWindowLong(Handle, GWL_STYLE) and WS_BORDER) <> 0;
 
@@ -1145,11 +1129,12 @@ begin
     if HasClientEdge or HasBorder then
     begin
       SetWindowLong(Handle, GWL_EXSTYLE, GetWindowLong(Handle, GWL_EXSTYLE) and not WS_EX_CLIENTEDGE);
-      SetWindowLong(Handle, GWL_STYLE, GetWindowLong(Handle, GWL_STYLE) and not WS_BORDER)
-    end
-  end else
+      SetWindowLong(Handle, GWL_STYLE, GetWindowLong(Handle, GWL_STYLE) and not WS_BORDER);
+    end;
+  end
+  else
   begin
-    if (BorderStyle = bsSingle) then
+    if BorderStyle = bsSingle then
     begin
       if Ctl3D then
       begin
@@ -1157,23 +1142,25 @@ begin
         if not HasClientEdge or HasBorder then
         begin
           SetWindowLong(Handle, GWL_EXSTYLE, GetWindowLong(Handle, GWL_EXSTYLE) or WS_EX_CLIENTEDGE);
-          SetWindowLong(Handle, GWL_STYLE, GetWindowLong(Handle, GWL_STYLE) and not WS_BORDER)
-        end
-      end else
+          SetWindowLong(Handle, GWL_STYLE, GetWindowLong(Handle, GWL_STYLE) and not WS_BORDER);
+        end;
+      end
+      else
       begin
         // Does not need WS_EX_CLIENTEDGE and needs WS_BORDER
         if HasClientEdge or not HasBorder then
         begin
           SetWindowLong(Handle, GWL_EXSTYLE, GetWindowLong(Handle, GWL_EXSTYLE) and not WS_EX_CLIENTEDGE);
-          SetWindowLong(Handle, GWL_STYLE, GetWindowLong(Handle, GWL_STYLE) or WS_BORDER)
-        end
-      end
-    end else
+          SetWindowLong(Handle, GWL_STYLE, GetWindowLong(Handle, GWL_STYLE) or WS_BORDER);
+        end;
+      end;
+    end
+    else
     begin
       SetWindowLong(Handle, GWL_EXSTYLE, GetWindowLong(Handle, GWL_EXSTYLE) and not WS_EX_CLIENTEDGE);
-      SetWindowLong(Handle, GWL_STYLE, GetWindowLong(Handle, GWL_STYLE) and not WS_BORDER)
-    end
-  end
+      SetWindowLong(Handle, GWL_STYLE, GetWindowLong(Handle, GWL_STYLE) and not WS_BORDER);
+    end;
+  end;
 end;
 
 procedure TCommonCanvasControl.WMDestroy(var Msg: TMessage);
@@ -1245,80 +1232,84 @@ var
   DC: HDC;
   Style, StyleEx: Longword;
   OffsetX, OffsetY: Integer;
+  Services: TCustomStyleServices;
 begin
   // Let Windows paint the scrollbars first
   DefaultHandler(Msg);
   // Always paint the NC area as refreshing it can be tricky and it sometimes
   // is not redrawn on startup
 //  if UpdateCount = 0 then
-  begin
-    DC := GetWindowDC(Handle);
-    try
-      NCCanvas.Handle := DC;
+  DC := GetWindowDC(Handle);
+  try
+    NCCanvas.Handle := DC;
 
-      Windows.GetClientRect(Handle, ClientR);
-      Windows.GetWindowRect(Handle, NonClientR);
+    Windows.GetClientRect(Handle, ClientR);
+    Windows.GetWindowRect(Handle, NonClientR);
 
-      Windows.ScreenToClient(Handle, NonClientR.TopLeft);
-      Windows.ScreenToClient(Handle, NonClientR.BottomRight);
-      OffsetX := NonClientR.Left;
-      OffsetY := NonClientR.Top;
+    Windows.ScreenToClient(Handle, NonClientR.TopLeft);
+    Windows.ScreenToClient(Handle, NonClientR.BottomRight);
+    OffsetX := NonClientR.Left;
+    OffsetY := NonClientR.Top;
 
-      // The DC origin is with respect to the Window so offset everything to match
-      OffsetRect(NonClientR, -OffsetX, -OffsetY);
-      OffsetRect(ClientR, -OffsetX, -OffsetY);
+    // The DC origin is with respect to the Window so offset everything to match
+    OffsetRect(NonClientR, -OffsetX, -OffsetY);
+    OffsetRect(ClientR, -OffsetX, -OffsetY);
 
-      Style := GetWindowLong(Handle, GWL_STYLE);
-      if (Style and WS_VSCROLL) <> 0 then
-      begin
-        StyleEx := GetWindowLong(Handle, GWL_EXSTYLE);
-        if (StyleEx and WS_EX_LEFTSCROLLBAR) <> 0 then          // RTL or LTR Reading
-          Dec(ClientR.Left, GetSystemMetrics(SM_CYVSCROLL))
-        else
-          Inc(ClientR.Right, GetSystemMetrics(SM_CYVSCROLL))
-      end;
-      if (Style and WS_HSCROLL) <> 0 then
-        Inc(ClientR.Bottom, GetSystemMetrics(SM_CYHSCROLL));
+    Style := GetWindowLong(Handle, GWL_STYLE);
+    if (Style and WS_VSCROLL) <> 0 then
+    begin
+      StyleEx := GetWindowLong(Handle, GWL_EXSTYLE);
+      if (StyleEx and WS_EX_LEFTSCROLLBAR) <> 0 then          // RTL or LTR Reading
+        Dec(ClientR.Left, GetSystemMetrics(SM_CYVSCROLL))
+      else
+        Inc(ClientR.Right, GetSystemMetrics(SM_CYVSCROLL));
+    end;
+    if (Style and WS_HSCROLL) <> 0 then
+      Inc(ClientR.Bottom, GetSystemMetrics(SM_CYHSCROLL));
 
-      // Paint the little square in the corner made by the scroll bars
-      if ((Style and WS_VSCROLL) <> 0) and ((Style and WS_HSCROLL) <> 0) then
-      begin
-        Filler := ClientR;
-        StyleEx := GetWindowLong(Handle, GWL_EXSTYLE);
-        if (StyleEx and WS_EX_LEFTSCROLLBAR) <> 0 then
-          Filler.Right := Filler.Left + GetSystemMetrics(SM_CYVSCROLL)
-        else
-          Filler.Left := Filler.Right - GetSystemMetrics(SM_CYVSCROLL);
-        Filler.Top := Filler.Bottom - GetSystemMetrics(SM_CYHSCROLL);
-        NCCanvas.Brush.Color := clBtnFace;
-        NCCanvas.FillRect(Filler);
-      end;
+    // Paint the little square in the corner made by the scroll bars
+    if ((Style and WS_VSCROLL) <> 0) and ((Style and WS_HSCROLL) <> 0) then
+    begin
+      Filler := ClientR;
+      StyleEx := GetWindowLong(Handle, GWL_EXSTYLE);
+      if (StyleEx and WS_EX_LEFTSCROLLBAR) <> 0 then
+        Filler.Right := Filler.Left + GetSystemMetrics(SM_CYVSCROLL)
+      else
+        Filler.Left := Filler.Right - GetSystemMetrics(SM_CYVSCROLL);
+      Filler.Top := Filler.Bottom - GetSystemMetrics(SM_CYHSCROLL);
+      NCCanvas.Brush.Color := clBtnFace;
+      NCCanvas.FillRect(Filler);
+    end;
 
-      // Punch out the client area and the scroll bar area
-      ExcludeClipRect(DC, ClientR.Left, ClientR.Top, ClientR.Right, ClientR.Bottom);
-      // Fill the entire
+    // Punch out the client area and the scroll bar area
+    ExcludeClipRect(DC, ClientR.Left, ClientR.Top, ClientR.Right, ClientR.Bottom);
+    // Fill the entire
+    Windows.FillRect(DC, NonClientR, Brush.Handle);
+
+    // Will return false if USETHEMES not defined
+    if DrawWithThemes then
+      PaintThemedNCBkgnd(NCCanvas, NonClientR)
+    else
+    begin
       Windows.FillRect(DC, NonClientR, Brush.Handle);
-
-      // Will return false if USETHEMES not defined
-      if DrawWithThemes then
-        PaintThemedNCBkgnd(NCCanvas, NonClientR)
-      else begin
-        Windows.FillRect(DC, NonClientR, Brush.Handle);
-        if BevelKind <> bkNone then
-        begin
-          if BevelInner <> bvNone then
-            InflateRect(ClientR, 1, 1);
-          if BevelOuter <> bvNone then
-            InflateRect(ClientR, 1, 1);
-        end;
-        DrawEdge(DC, NonClientR, InnerStyles[BevelInner] or OuterStyles[BevelOuter],
-            Byte(BevelEdges) or EdgeStyles[BevelKind] or Ctl3DStyles[Ctl3D]);
+      if BevelKind <> bkNone then
+      begin
+        if BevelInner <> bvNone then
+          InflateRect(ClientR, 1, 1);
+        if BevelOuter <> bvNone then
+          InflateRect(ClientR, 1, 1);
       end;
-    finally
-      NCCanvas.Handle := 0;
-      ReleaseDC(Handle, DC);
-    end
-  end
+      DrawEdge(DC, NonClientR, InnerStyles[BevelInner] or OuterStyles[BevelOuter],
+        Byte(BevelEdges) or EdgeStyles[BevelKind] or Ctl3DStyles[Ctl3D]);
+    end;
+
+    Services := StyleServices;
+    if Services.Enabled then
+      Services.PaintBorder(Self, False);
+  finally
+    NCCanvas.Handle := 0;
+    ReleaseDC(Handle, DC);
+  end;
 end;
 
 procedure TCommonCanvasControl.WMPaint(var Msg: TWMPaint);
@@ -1327,8 +1318,10 @@ procedure TCommonCanvasControl.WMPaint(var Msg: TWMPaint);
 // needs a small slice of the window painted, why paint it all?  This implementation
 // also handles DoubleBuffering better
 var
-  PaintInfo: TPaintStruct;
   ClientR: TRect;
+  Color: TColor;
+  PaintInfo: TPaintStruct;
+  Services: TCustomStyleServices;
 begin
   BeginPaint(Handle, PaintInfo);
   try
@@ -1337,6 +1330,7 @@ begin
       try
        if not CacheDoubleBufferBits then
         begin
+          BackBits.Free;
           BackBits := TBitmap.Create;
           BackBits.PixelFormat := pf32Bit;
           Windows.GetClientRect(Handle, ClientR);
@@ -1354,13 +1348,19 @@ begin
           if not IsRectEmpty(PaintInfo.rcPaint) and (ClientWidth > 0) and (ClientHeight > 0) then
           begin
             // Assign attributes to the Canvas used
+            Color := Brush.Color;
             BackBits.Canvas.Font.Assign(Font);
             BackBits.Canvas.Brush.Color := Color;
             BackBits.Canvas.Brush.Assign(Brush);
 
             SetWindowOrgEx(BackBits.Canvas.Handle, 0, 0, nil);
             SetViewportOrgEx(BackBits.Canvas.Handle, 0, 0, nil);
+            Services := StyleServices(Self);
+            if Services.Enabled then
+              Brush.Color := Services.GetSystemColor(Brush.Color);
             FillRect(BackBits.Canvas.Handle, PaintInfo.rcPaint, Brush.Handle);
+            if Services.Enabled then
+              Brush.Color := Color;
             SelectClipRgn(BackBits.Canvas.Handle, 0);  // Remove the clipping region we created
 
             // Paint the rectangle that is needed
@@ -1382,9 +1382,9 @@ begin
         end;
       finally
         if not CacheDoubleBufferBits then
-          FreeAndNil(FBackBits)
+          FreeAndNil(FBackBits);
       end;
-    end
+    end;
   finally
     EndPaint(Handle, PaintInfo);
   end
@@ -2021,6 +2021,13 @@ begin
   S.Write(PWideChar(Value)^, Length(Value) * 2)
 end;
 
+procedure TCommonCanvasControl.ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean);
+begin
+  inherited ChangeScale(AM, AD, AIsDpiChange);
+  if AIsDpiChange and (AM <> AD) then
+    Themes.ThemesLoad;
+end;
+
 procedure TCommonCanvasControl.CMColorChange(var Message: TMessage);
 begin
   inherited;
@@ -2281,6 +2288,7 @@ begin
 end;
 
 { TCommonSysImages }
+
 constructor TCommonSysImages.Create(AOwner: TComponent);
 begin
   inherited;
@@ -2325,6 +2333,12 @@ begin
   inherited;
   FDPIChangedMessageID := TMessageManager.DefaultManager.SubscribeToMessage(TChangeScaleMessage, DPIChangedMessageHandler);
   HandleNeeded;
+end;
+
+destructor TCommonVirtualImageList.Destroy;
+begin
+  TMessageManager.DefaultManager.Unsubscribe(TChangeScaleMessage, FDPIChangedMessageID);
+  inherited;
 end;
 
 procedure TCommonVirtualImageList.DPIChangedMessageHandler(const Sender: TObject; const Msg: Messaging.TMessage);

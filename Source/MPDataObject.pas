@@ -68,7 +68,7 @@ type
   );
 
 type
-  TFormatEtcArray = array of TFormatEtc;
+  TFormatEtcArray = ActiveX.TFormatEtcArray;
   TDataObjectInfo = record
     FormatEtc: TFormatEtc;
     StgMedium: TStgMedium;

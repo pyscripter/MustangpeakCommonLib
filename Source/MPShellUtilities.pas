@@ -61,6 +61,10 @@ interface
   {$DEFINE GX_DEBUG}
 {$ENDIF}
 
+{$IFDEF MSWINDOWS}
+  {$WARN SYMBOL_PLATFORM OFF}
+{$ENDIF}
+
 
 {$B-}
 
@@ -1086,7 +1090,7 @@ type
     function GetIconIndex(OpenIcon: Boolean; IconSize: TIconSize; ForceLoad: Boolean = True): integer; virtual;
     function GetImage: TBitmap;  virtual;
     function VerifyPIDLRelationship(NamespaceArray: TNamespaceArray; Silent: Boolean = False): Boolean;
-    procedure HandleContextMenuMsg(Msg, wParam, lParam: Longint; var Result: LRESULT);  virtual;
+    procedure HandleContextMenuMsg(Msg: Cardinal; wParam: WPARAM; lParam: LPARAM; var Result: LRESULT);  virtual;
     procedure InvalidateCache;  virtual;
     procedure InvalidateDetailsOfCache(FlushStrings: Boolean);
     procedure InvalidateNamespace(RefreshIcon: Boolean = True);  virtual;
@@ -1388,7 +1392,7 @@ type
     procedure DoShow; virtual;
     function DuplicateKey(Key: HKEY): HKEY;
     function FindCommandId(CmdID: UINT; var MenuItem: TMenuItem): Boolean;
-    procedure HandleContextMenuMsg(Msg, wParam, lParam: Longint; var Result: LRESULT); stdcall;
+    procedure HandleContextMenuMsg(Msg: Cardinal; wParam: WPARAM; lParam: LPARAM; var Result: LRESULT); stdcall;
     function InternalShowContextMenu(Owner: TWinControl; ParentPIDL: PItemIDList; ChildPIDLs: TAbsolutePIDLArray; Verb: string; Position: PPoint = nil; ShiftKeyState: TExecuteVerbShift = evsCurrent): Boolean;
     procedure LoadMultiFolderPIDLArray(Namespaces: TNamespaceArray; var PIDLs: TAbsolutePIDLArray);
     procedure LoadRegistryKeyStrings(Focused: TNamespace); virtual; abstract;
@@ -2381,7 +2385,7 @@ begin
   FillChar(BrowseInfoW, SizeOf(BrowseInfoW), #0);
   BrowseInfoW.hwndOwner := GetActiveWindow;
   BrowseInfoW.pidlRoot := RootFolder;
-  BrowseInfoW.lParam := Integer( InitialPath);
+  BrowseInfoW.lParam := LPARAM(InitialPath);
   BrowseInfoW.pszDisplayName := DisplayNameW;
   {$IFDEF BCB}
   BrowseInfoW.lpfn := MPBrowseForFolderCallback;
@@ -4850,9 +4854,10 @@ begin
   begin
     if not Assigned(FWin32FindDataW) then
       GetDataFromIDList;
-    Result := (Win32FindDataW.dwReserved0 = IO_REPARSE_TAG_SYMLINK) and
-              (Win32FindDataW.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY <> 0) and
-              (Win32FindDataW.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT <> 0);
+    if Assigned(Win32FindDataW) then
+      Result := (Win32FindDataW.dwReserved0 = IO_REPARSE_TAG_SYMLINK) and
+                (Win32FindDataW.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY <> 0) and
+                (Win32FindDataW.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT <> 0);
   end
 end;
 
@@ -6088,7 +6093,7 @@ begin
   Result := FShellIconOverlayInterface
 end;
 
-procedure TNamespace.HandleContextMenuMsg(Msg, wParam, lParam: Longint; var Result: LRESULT);
+procedure TNamespace.HandleContextMenuMsg(Msg: Cardinal; wParam: WPARAM; lParam: LPARAM; var Result: LRESULT);
 { This is called when the ContextMenu calls back to its owner window to ask     }
 { questions to implement the addition of icons to the menu.  The messages sent  }
 { to the owner window are:  WM_INITMENUPOPUP, WM_DRAWITEM, or WM_MEASUREITEM.   }
@@ -6346,20 +6351,19 @@ begin
             CurrentContextMenu2 := nil;  // not sure it is available yet
             if Assigned(ContextMenu) then
             begin
-              if ContextMenu.QueryInterface(IContextMenu3, Pointer(ContextMenu3)) = E_NOINTERFACE then
+              if ContextMenu.QueryInterface(IContextMenu3, ContextMenu3) <> S_OK then
               begin
-                if ContextMenu.QueryInterface(IID_IContextMenu2, Pointer(ContextMenu2)) <> E_NOINTERFACE then
+                if ContextMenu.QueryInterface(IID_IContextMenu2, ContextMenu2) = S_OK then
                   CurrentContextMenu2 := ContextMenu2;
-              end else
+              end
+              else
                 CurrentContextMenu2 := ContextMenu3;
 
               if Assigned(ContextMenu3) then
                 ContextMenu3.QueryContextMenu(Menu, 0, 1, $7FFF, Flags)
-              else
-              if Assigned(ContextMenu2) then
+              else if Assigned(ContextMenu2) then
                 ContextMenu2.QueryContextMenu(Menu, 0, 1, $7FFF, Flags)
-              else
-              if Assigned(ContextMenu) then
+              else if Assigned(ContextMenu) then
                 ContextMenu.QueryContextMenu(Menu, 0, 1, $7FFF, Flags);
 
               // Inject our custom menu item
@@ -6387,24 +6391,23 @@ begin
                   ControlDown := GetKeyState(VK_CONTROL) and $8000 <> 0;
                   Owner.WindowProc := FOldWndProcForContextMenu;
                   FOldWndProcForContextMenu := nil;
-                end
-              end else
+                end;
+              end
+              else
                 MenuCmd := 0;
 
               if MenuCmd <> 0 then
               begin
                 SetLength(VerbW, MaxVerbLen);
-                FillChar(VerbW[1], MaxVerbLen*2, #0);
+                FillChar(VerbW[1], MaxVerbLen * SizeOf(Char), #0);
                 GenericVerb := @VerbW[1];
                 Flags := GCS_VERBW;
                 if Assigned(ContextMenu3) then
-                  Result := Succeeded(ContextMenu3.GetCommandString(MenuCmd-1, Flags, nil, GenericVerb, MaxVerbLen))
-                else
-                if Assigned(ContextMenu2) then
-                  Result := Succeeded(ContextMenu2.GetCommandString(MenuCmd-1, Flags, nil, GenericVerb, MaxVerbLen))
-                else
-                if Assigned(ContextMenu) then
-                  Result := Succeeded(ContextMenu.GetCommandString(MenuCmd-1, Flags, nil, GenericVerb, MaxVerbLen));
+                  Result := Succeeded(ContextMenu3.GetCommandString(MenuCmd - 1, Flags, nil, GenericVerb, MaxVerbLen))
+                else if Assigned(ContextMenu2) then
+                  Result := Succeeded(ContextMenu2.GetCommandString(MenuCmd - 1, Flags, nil, GenericVerb, MaxVerbLen))
+                else if Assigned(ContextMenu) then
+                  Result := Succeeded(ContextMenu.GetCommandString(MenuCmd - 1, Flags, nil, GenericVerb, MaxVerbLen));
 
                 SetLength(VerbW, lstrlenW(PWideChar(VerbW)));
 
@@ -6458,11 +6461,9 @@ begin
 
                   if Assigned(ContextMenu3) then
                     Result := Succeeded(ContextMenu3.InvokeCommand(InvokeInfo))
-                  else
-                  if Assigned(ContextMenu2) then
+                  else if Assigned(ContextMenu2) then
                     Result := Succeeded(ContextMenu2.InvokeCommand(InvokeInfo))
-                  else
-                  if Assigned(ContextMenu) then
+                  else if Assigned(ContextMenu) then
                     Result := Succeeded(ContextMenu.InvokeCommand(InvokeInfo));
                 end
               end;
@@ -6483,7 +6484,7 @@ begin
         ContextMenu2 := nil;
         ContextMenu3 := nil;
         CurrentContextMenu := nil;
-        CurrentContextMenu2 := nil;  // not sure it is available yet
+        CurrentContextMenu2 := nil;
       end
     end
   finally
@@ -9019,7 +9020,7 @@ begin
     OnShow(Self);
 end;
 
-procedure TCommonShellContextMenu.HandleContextMenuMsg(Msg, wParam, lParam: Longint; var Result: LRESULT);
+procedure TCommonShellContextMenu.HandleContextMenuMsg(Msg: Cardinal; wParam: WPARAM; lParam: LPARAM; var Result: LRESULT);
 { This is called when the ContextMenu calls back to its owner window to ask     }
 { questions to implement the addition of icons to the menu.  The messages sent  }
 { to the owner window are:  WM_INITMENUPOPUP, WM_DRAWITEM, or WM_MEASUREITEM.   }
