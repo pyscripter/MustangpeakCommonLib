@@ -2402,7 +2402,7 @@ end;
 
 type
   PColorRecArray = ^TColorRecArray;
-  TColorRecArray = array [0..0] of TColorRec;
+  TColorRecArray = array [0..MaxInt div 10] of TColorRec;
 
 procedure InitAlpha(ABitmap: TBitmap);
 var
