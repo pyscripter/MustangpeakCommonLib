@@ -507,6 +507,7 @@ implementation
 
 uses
   UITypes,
+  GraphUtil,
   MPCommonUtilities,
   MPDataObject,
   MPShellUtilities,
@@ -2401,20 +2402,6 @@ begin
 end;
 
 type
-  PColorRecArray = ^TColorRecArray;
-  TColorRecArray = array [0..MaxInt div 10] of TColorRec;
-
-procedure InitAlpha(ABitmap: TBitmap);
-var
-  I: Integer;
-  Src: Pointer;
-begin
-  Src := ABitmap.Scanline[ABitmap.Height - 1];
-  for I := 0 to ABitmap.Width * ABitmap.Height - 1 do
-    PColorRecArray(Src)[I].A := 0;
-end;
-
-type
   TAccessCustomImageList = class(TCustomImageList)
   end;
 
@@ -2434,7 +2421,7 @@ begin
   try
     B.PixelFormat := pf32bit;
     B.SetSize(FSourceImageList.Width, FSourceImageList.Height);
-    InitAlpha(B);
+    InitAlpha(B, 0);
     TAccessCustomImageList(FSourceImageList).DoDraw(Index, B.Canvas, 0, 0, Style, Enabled);
     ResizeBitmap(B, Width, Height);
     Canvas.Draw(X, Y, B);
