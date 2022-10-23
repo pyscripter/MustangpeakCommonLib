@@ -475,8 +475,6 @@ type
   function ExtraLargeSysImages: TCommonSysImages;
   function LargeSysImages: TCommonSysImages;
   function SmallSysImages: TCommonSysImages;
-  function LargeSysImagesForPPI(PPI: Integer): TCustomImageList;
-  function SmallSysImagesForPPI(PPI: Integer): TCustomImageList;
   procedure FlushImageLists;
   procedure CreateFullyQualifiedShellDataObject(NamespaceList: TList; DragDropObject: Boolean; var ADataObject: IDataObject);
   procedure StripDuplicatesAndDesktops(NamespaceList: TList);
@@ -520,10 +518,6 @@ var
   FExtraLargeSysImages: TCommonSysImages = nil;
   FLargeSysImages: TCommonSysImages = nil;
   FSmallSysImages: TCommonSysImages = nil;
-  {$if CompilerVersion >= 33}
-  FLargeSysImagesForPPI: TObjectDictionary<Integer,TCustomImageList> = nil;
-  FSmallSysImagesForPPI: TObjectDictionary<Integer,TCustomImageList> = nil;
-  {$ifend}
   PIDLMgr: TCommonPIDLManager = nil;
   ILIsParent_MP: TILIsParent = nil;
   ILIsEqual_MP: TILIsEqual = nil;
@@ -600,50 +594,6 @@ begin
   end;
   Result := FSmallSysImages;
 end;
-
-{$if CompilerVersion >= 33}
-function LargeSysImagesForPPI(PPI: Integer): TCustomImageList;
-begin
-  if Screen.PixelsPerInch = PPI then
-    Result := LargeSysImages
-  else
-  begin
-    if not Assigned(FLargeSysImagesForPPI) then
-      FLargeSysImagesForPPI := TObjectDictionary<Integer,TCustomImageList>.Create([doOwnsValues]);
-    if not FLargeSysImagesForPPI.TryGetValue(PPI, Result) then
-    begin
-      Result := ScaleImageList(SmallSysImages, PPI, Screen.PixelsPerInch);
-      Result.DrawingStyle := dsTransparent;
-      FLargeSysImagesForPPI.Add(PPI, Result);
-    end;
-  end;
-end;
-
-function SmallSysImagesForPPI(PPI: Integer): TCustomImageList;
-begin
-  if Screen.PixelsPerInch = PPI then
-    Result := SmallSysImages
-  else
-  begin
-    if not Assigned(FSmallSysImagesForPPI) then
-      FSmallSysImagesForPPI := TObjectDictionary<Integer,TCustomImageList>.Create([doOwnsValues]);
-    if not FSmallSysImagesForPPI.TryGetValue(PPI, Result) then
-    begin
-      Result := ScaleImageList(SmallSysImages, PPI, Screen.PixelsPerInch);
-      FSmallSysImagesForPPI.Add(PPI, Result);
-    end;
-  end;
-end;
-{$else}
-function LargeSysImagesForPPI(PPI: Integer): TCustomImageList;
-begin
-  Result := LargeSysImages;
-end;
-function SmallSysImagesForPPI(PPI: Integer): TCustomImageList;
-begin
-  Result := SmallSysImages;
-end;
-{$ifend}
 
 procedure StripDuplicatesAndDesktops(NamespaceList: TList);
 
@@ -2474,10 +2424,6 @@ finalization
   FSmallSysImages.Free;
   FExtraLargeSysImages.Free;
   FJumboSysImages.Free;
-  {$if CompilerVersion >= 33}
-  FreeAndNil(FLargeSysImagesForPPI);
-  FreeAndNil(FSmallSysImagesForPPI);
-  {$ifend}
   FreeAndNil(PIDLMgr);
 
 end.
