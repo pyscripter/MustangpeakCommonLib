@@ -311,7 +311,7 @@ function UniqueDirName(const ADirPath: string): string;
 function UniqueFileName(const AFilePath: string): string;
 function WideExpandEnviromentString(EnviromentString: string): string;
 function WideExpandEnviromentStringForUser(EnviromentString: string): string;
-function WideExtractFileDrive(Path: string; DriveLetterOnly: Boolean = False): string;
+function WideExtractFileDrive(const Path: string; DriveLetterOnly: Boolean = False): string;
 function WideExtractFileExt(Path: string; StripExtPeriod: Boolean = False): string;
 function WideExtractFileName(Path: string; BaseNameOnly: Boolean = False): string;
 function WideGetTempDir: string;
@@ -739,7 +739,7 @@ begin
   end;
 end;
 
-function WideExtractFileDrive(Path: string; DriveLetterOnly: Boolean = False): string;
+function WideExtractFileDrive(const Path: string; DriveLetterOnly: Boolean = False): string;
 begin
   Result := ExtractFileDrive(Path);
   if DriveLetterOnly and (Length(Result) > 0) then
