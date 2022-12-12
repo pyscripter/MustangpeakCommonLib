@@ -358,7 +358,7 @@ type
     csTypeString,     // A string.
     csTypeInt,        // An integer.
     csTypeDate,       // A date.
-    csOnByDefault,    // Should be shown by default in the Microsoft® Windows® Explorer Details view.
+    csOnByDefault,    // Should be shown by default in the Microsoftï¿½ Windowsï¿½ Explorer Details view.
     csSlow,           // Extracting information about the column can be time consuming.
     csExtended,       // Provided by a handler, not the folder object.
     csSecondaryUI,    // Not displayed in the context menu, but listed in the More dialog box.
@@ -1564,7 +1564,7 @@ type
   function NamespaceToRelativePIDLArray(Namespaces: TNamespaceArray): TRelativePIDLArray;
   function NamespaceToAbsolutePIDLList(Namespaces: TNamespaceArray): TCommonPIDLList;
   function NamespaceToNamespaceList(Namespaces: TNamespaceArray): TList;
-  function PathToPIDL(APath: string; ParentWindowHandle: HWND = 0; ForceApplicationToTop: Boolean = False): PItemIDList;
+  function PathToPIDL(const APath: string; ParentWindowHandle: HWND = 0; ForceApplicationToTop: Boolean = False): PItemIDList;
   function PIDLToPath(APIDL: PItemIDList): string;
   function DirExistsVET(APath: string; ShowSystemMessages: Boolean): Boolean; overload;
   function DirExistsVET(NS: TNamespace; ShowSystemMessages: Boolean): Boolean; overload;
@@ -2528,7 +2528,7 @@ begin
 end;
 { ----------------------------------------------------------------------------- }
 
-function PathToPIDL(APath: string; ParentWindowHandle: HWND = 0; ForceApplicationToTop: Boolean = False): PItemIDList;
+function PathToPIDL(const APath: string; ParentWindowHandle: HWND = 0; ForceApplicationToTop: Boolean = False): PItemIDList;
 // Takes the passed Path and attempts to convert it to the equavalent PIDL
 var
   Desktop: IShellFolder;
