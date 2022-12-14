@@ -388,7 +388,9 @@ function GlobalCallbackThreadManager: TCallbackThreadManager;
 implementation
 
 uses
-  MPResources, MPShellUtilities;
+  System.Generics.Collections,
+  MPResources,
+  MPShellUtilities;
 
 var
   PIDLMgr: TCommonPIDLManager;
@@ -1129,8 +1131,10 @@ var
   lQuitMsgExitCode: Integer;
   lRepostQuitMsg: Boolean;
   lRequest: TCommonThreadRequest;
+  MsgList: TList<TMsg>;
 begin
   lList := nil;
+  MsgList := nil;
 
   if Enabled then
   begin
@@ -1161,12 +1165,18 @@ begin
             begin
               if Assigned(AItem) then
               begin
-                // If is the target AItem then remove it, else put it back in the queue
+                // If is the target AItem then remove it, else put it back in the queue after this loop ends
                 // WARNING don't SendMessage as that could cause some nasty reentrant isses
                 if lRequest.Item = AItem then
                   lRequest.Release
                 else
-                  PostMessage(lRequest.Window.Handle, lRequest.CallbackWndMessage, lMsg.wParam, lMsg.lParam);
+                begin
+                  lMsg.message := lRequest.CallbackWndMessage;
+                  lMsg.hwnd := lRequest.Window.Handle;
+                  if MsgList = nil then
+                    MsgList := TList<TMsg>.Create;
+                  MsgList.Add(lMsg);
+                end;
               end
               else
                 lRequest.Release;
@@ -1181,6 +1191,12 @@ begin
             end;
           end;
         end;
+      end;
+      if Assigned(MsgList) then
+      begin
+        for var Msg in MsgList do
+           PostMessage(Msg.hwnd, Msg.message, Msg.wParam, Msg.lParam);
+        FreeAndNil(MsgList);
       end;
 
       if Assigned(AWindow) then
@@ -1208,12 +1224,18 @@ begin
                 begin
                   if AItem <> nil then
                   begin
-                    // If is the target AItem then remove it, else put it back in the queue
+                    // If is the target AItem then remove it, else put it back in the queue after this loop ends
                     // WARNING don't SendMessage as that could cause some nasty reentrant isses
                     if lRequest.Item = AItem then
                       lRequest.Release
                     else
-                      PostMessage(lRequest.Window.Handle, lRequest.CallbackWndMessage, lMsg.wParam, lMsg.lParam);
+                    begin
+                      lMsg.message := lRequest.CallbackWndMessage;
+                      lMsg.hwnd := lRequest.Window.Handle;
+                      if MsgList = nil then
+                        MsgList := TList<TMsg>.Create;
+                      MsgList.Add(lMsg);
+                    end;
                   end
                   else
                     lRequest.Release;
@@ -1222,8 +1244,14 @@ begin
             end;
           end;
           if lRepostQuitMsg then
-            PostQuitMessage(lQuitMsgExitCode);
-        end
+            PostQuitMessage(lQuitMsgExitCode)
+          else if Assigned(MsgList) then
+          begin
+            for var Msg in MsgList do
+               PostMessage(Msg.hwnd, Msg.message, Msg.wParam, Msg.lParam);
+            FreeAndNil(MsgList);
+          end;
+        end;
       end;
 
       if Assigned(lList) then
