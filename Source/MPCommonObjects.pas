@@ -2295,22 +2295,16 @@ end;
 procedure TCommonVirtualImageList.DPIChangedMessageHandler(const Sender: TObject; const Msg: Messaging.TMessage);
 var
   W, H: Integer;
-  ApplyChange: Boolean;
-  C: TComponent;
+  Comp: TComponent;
 begin
-  ApplyChange := False;
-  C := Owner;
-  while Assigned(C) do
-  begin
-    if C = TChangeScaleMessage(Msg).Sender then
-    begin
-      ApplyChange := True;
-      Break;
-    end;
-    C := C.Owner;
-  end;
+  Comp := Owner;
 
-  if ApplyChange then
+  // The TCommonVirtualImageList could be owned either by a Form/Frame or
+  // by a Mustangpeak control owned by a Form/Frame
+  if Assigned(Owner) and not (Owner is TScrollingWinControl) then
+    Comp := Owner.Owner;
+
+  if TChangeScaleMessage(Msg).Sender = Comp then
   begin
     W := MulDiv(Width, TChangeScaleMessage(Msg).M, TChangeScaleMessage(Msg).D);
     H := MulDiv(Height, TChangeScaleMessage(Msg).M, TChangeScaleMessage(Msg).D);
