@@ -2331,18 +2331,21 @@ end;
 
 procedure TCommonVirtualImageList.SetSourceImageList(Value: TCustomImageList);
 begin
-  if Assigned(FSourceImageList) and (Value <> FSourceImageList) then
-     FSourceImageList.RemoveFreeNotification(Self);
-  if Assigned(Value) and (Value <> FSourceImageList) then
+  if Value <> FSourceImageList then
   begin
-    SetSize(Value.Width, Value.Height);
-    ColorDepth := Value.ColorDepth;
-    BkColor := Value.BkColor;
-    BlendColor := Value.BlendColor;
-    DrawingStyle := Value.DrawingStyle;
-    Value.FreeNotification(Self);
+    if Assigned(FSourceImageList) then
+       FSourceImageList.RemoveFreeNotification(Self);
+    FSourceImageList := Value;
+    if Assigned(Value) then
+    begin
+      SetSize(Value.Width, Value.Height);
+      ColorDepth := Value.ColorDepth;
+      BkColor := Value.BkColor;
+      BlendColor := Value.BlendColor;
+      DrawingStyle := Value.DrawingStyle;
+      Value.FreeNotification(Self);
+    end;
   end;
-  FSourceImageList := Value;
 end;
 
 type
