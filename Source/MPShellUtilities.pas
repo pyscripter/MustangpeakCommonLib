@@ -1,4 +1,4 @@
-unit MPShellUtilities;
+﻿unit MPShellUtilities;
 
 // Version 2.1.0
 //
@@ -91,7 +91,7 @@ uses
   MPResources,
   MPDataObject,
   Variants,
-  Contnrs,
+  Generics.Collections,
   Menus;
 
 const
@@ -1258,16 +1258,9 @@ type
  end;
 {-------------------------------------------------------------------------------}
 
-  TVirtualNameSpaceList  = class(TObjectList)
-  private
-    function GetItems(Index: Integer): TNamespace;
-    procedure SetItems(Index: Integer; ANamespace: TNamespace);
+  TVirtualNameSpaceList  = class(TObjectList<TNameSpace>)
   public
-    function Add(ANamespace: TNamespace): Integer;
     procedure FillArray(var NamespaceArray: TNamespaceArray);
-    function IndexOf(ANamespace: TNamespace): Integer;
-    procedure Insert(Index: Integer; ANamespace: TNamespace);
-    property Items[Index: Integer]: TNamespace read GetItems write SetItems; default;
   end;
 
  //
@@ -1286,26 +1279,12 @@ type
   // the shell still has a connection to it through IShellFolder or IDropTarget.
   // It should be virtually impossible to do this as the shell only connects to
   // the interfaces during the time the menu is open.
-  PMenuItemLink = ^TMenuItemLink;
   TMenuItemLink = record
     MenuID: UINT;
     Item: TMenuItem
   end;
 
-  TMenuItemMap = class(TList)
-  protected
-    function Get(Index: Integer): PMenuItemLink;
-    procedure Put(Index: Integer; Item: PMenuItemLink);
-  public
-    function Add: PMenuItemLink;
-    function First: PMenuItemLink;
-    function IndexOf(Item: PMenuItemLink): Integer;
-    procedure Clear; override;
-    function Insert(Index: Integer): PMenuItemLink; reintroduce;
-    function Last: PMenuItemLink;
-    function Remove(Item: PMenuItemLink): Integer;
-    property Items[Index: Integer]: PMenuItemLink read Get write Put; default;
-  end;
+  TMenuItemMap = TList<TMenuItemLink>;
 
   TCommonShellContextMenu = class(TComponent, IUnknown, IShellFolder, IDropTarget)
   private
@@ -7970,11 +7949,6 @@ end;
 
 { TVirtualNamespaceList }
 
-function TVirtualNamespaceList.Add(ANamespace: TNamespace): Integer;
-begin
-  Result := inherited Add(ANamespace);
-end;
-
 procedure TVirtualNamespaceList.FillArray(var NamespaceArray: TNamespaceArray);
 var
   I: Integer;
@@ -7984,25 +7958,6 @@ begin
     NamespaceArray[0] := Items[I];
 end;
 
-function TVirtualNamespaceList.GetItems(Index: Integer): TNamespace;
-begin
-  Result := TNamespace(inherited Items[Index]);
-end;
-
-function  TVirtualNamespaceList.IndexOf(ANamespace: TNamespace): Integer;
-begin
-  Result := inherited IndexOf(ANamespace);
-end;
-
-procedure TVirtualNamespaceList.Insert(Index: Integer; ANamespace: TNamespace);
-begin
-  inherited Insert(Index, ANamespace);
-end;
-
-procedure TVirtualNamespaceList.SetItems(Index: Integer; ANamespace: TNamespace);
-begin
-  inherited Items[Index] := ANamespace;
-end;
 
 { TCommonShellContextMenu }
 constructor TCommonShellContextMenu.Create(AOwner: TComponent);
@@ -8099,7 +8054,7 @@ begin
         // Fix the MenuIDs to be commonly offset once all merging is done
         if MenuMap.Count > MapCount then
           for i := MapCount to MenuMap.Count - 1 do
-            MenuMap[i].MenuID := MenuMap[i].MenuID - MergeOffset;
+            MenuMap.List[i].MenuID := MenuMap.List[i].MenuID - MergeOffset;
         {$IFDEF GXDEBUG_DEFMENUCREATE_CALLBACK}
          SendDebug('DFM_MERGECONTEXTMENU');
         {$ENDIF}
@@ -8254,7 +8209,7 @@ begin
         // Fix the MenuIDs to be commonly offset once all merging is done
         if MenuMap.Count > MapCount then
           for i := MapCount to MenuMap.Count - 1 do
-            MenuMap[i].MenuID := MenuMap[i].MenuID - MergeOffset;
+            MenuMap.List[i].MenuID := MenuMap.List[i].MenuID - MergeOffset;
         {$IFDEF GXDEBUG_DEFMENUCREATE_CALLBACK}
          SendDebug('DFM_MERGECONTEXTMENU_TOP');
         {$ENDIF}
@@ -9123,7 +9078,7 @@ function TCommonShellContextMenu.MergeMenuIntoContextMenu(Menu: TPopupMenu;
   var
     i: Integer;
     SubMenu: hMenu;
-    Map: PMenuItemLink;
+    Map: TMenuItemLink;
     NewIndex: Integer;
   begin
     Result := MenuID;
@@ -9138,9 +9093,9 @@ function TCommonShellContextMenu.MergeMenuIntoContextMenu(Menu: TPopupMenu;
       NewIndex := AddContextMenuItem(hPopupMenu, MenuItem.Caption, Index, Result, 0, MenuItem.Enabled, MenuItem.Checked, MenuItem.Default);
     if NewIndex <> $FFFF then
     begin
-      Map := MenuMap.Add;
       Map.MenuID := Result;
       Map.Item := MenuItem;
+      MenuMap.Add(Map);
       Inc(Result)
     end;
   end;
@@ -9392,64 +9347,6 @@ begin
   KeyStrings.Clear;
   PasteMenuItem := True;
   Extensions := [cmeShellDefault, cmeDirBackground];
-end;
-
-{ TMenuItemMap }
-function TMenuItemMap.Add: PMenuItemLink;
-begin
-  New(Result);
-  if Assigned(Result) then
-    inherited Insert(Count, Result)
-end;
-
-function TMenuItemMap.First: PMenuItemLink;
-begin
-  Result := PMenuItemLink( inherited First)
-end;
-
-function TMenuItemMap.Get(Index: Integer): PMenuItemLink;
-begin
-  Result := PMenuItemLink( inherited Get(Index))
-end;
-
-function TMenuItemMap.IndexOf(Item: PMenuItemLink): Integer;
-begin
-  Result := inherited IndexOf(Item)
-end;
-
-function TMenuItemMap.Last: PMenuItemLink;
-begin
-  Result := PMenuItemLink( inherited Last)
-end;
-
-function TMenuItemMap.Remove(Item: PMenuItemLink): Integer;
-begin
-  Result := inherited Remove(Item)
-end;
-
-procedure TMenuItemMap.Clear;
-var
-  i: Integer;
-begin
-  try
-    for i := 0 to Count - 1 do
-      Dispose(  Items[i]);
-  finally
-    SetCount(0);
-    SetCapacity(0);
-  end;
-end;
-
-function TMenuItemMap.Insert(Index: Integer): PMenuItemLink;
-begin
-  New(Result);
-  if Assigned(Result) then
-    inherited Insert(Index, Result)
-end;
-
-procedure TMenuItemMap.Put(Index: Integer; Item: PMenuItemLink);
-begin
-  inherited Put(Index, Item)
 end;
 
 { TExplorerThreadInstance }
