@@ -804,15 +804,16 @@ var
   Factory: IWICImagingFactory;
   Scaler: IWICBitmapScaler;
   Source : TWICImage;
+  IBitmap: IWICBitmap;
 begin
-  Bitmap.AlphaFormat := afDefined;
   Source := TWICImage.Create;
   try
-    Source.Assign(Bitmap);
     Factory := TWICImage.ImagingFactory;
+    Factory.CreateBitmapFromHBITMAP(Bitmap.Handle, Bitmap.Palette,
+      WICBitmapUsePremultipliedAlpha, IBitmap);
     Factory.CreateBitmapScaler(Scaler);
     try
-      Scaler.Initialize(Source.Handle, NewWidth, NewHeight,
+      Scaler.Initialize(IBitmap, NewWidth, NewHeight,
         WICBitmapInterpolationModeHighQualityCubic);
       Source.Handle := IWICBitmap(Scaler);
     finally
