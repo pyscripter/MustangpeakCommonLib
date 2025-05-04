@@ -495,6 +495,12 @@ type
     function PPIUnScale(Value: integer): integer;
   end;
 
+  {$IF CompilerVersion >= 36}
+    TListSize = NativeInt;
+  {$ELSE}
+    TListSize = Integer;
+  {$IFEND}
+
 var
   StreamHelper: TCommonMemoryStreamHelper;
   Checks: TCommonCheckBoundManager;
